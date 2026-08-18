@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMISC SaE Predictor</title>
+    <style>
+        /* ── reset & base ── */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a0a;
+            color: #ddd;
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        #network-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.45;
+        }
+        .app {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            padding: 28px 10px 18px;
+            border-bottom: 1px solid rgba(180, 20, 30, 0.3);
+            margin-bottom: 28px;
+        }
+        .header h1 {
+            font-size: 3.4rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-shadow: 0 0 18px rgba(200, 30, 40, 0.5), 0 0 40px rgba(200, 30, 40, 0.2);
+            line-height: 1.1;
+        }
+        .header h1 .rmisc {
+            color: #d12a2a;
+            text-shadow: 0 0 20px #d12a2a, 0 0 60px #a02020;
+        }
+        .header h1 .predictor {
+            color: #f0f0f0;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
+        }
+        .header .sub {
+            color: #888;
+            font-size: 0.9rem;
+            letter-spacing: 6px;
+            margin-top: 4px;
+            font-weight: 300;
+            border-top: 1px solid rgba(180, 20, 30, 0.15);
+            padding-top: 8px;
+            display: inline-block;
+        }
+        .loading-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #888;
+        }
+        .loading-state .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(180, 20, 30, 0.15);
+            border-top-color: #d12a2a;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .next-banner {
+            background: linear-gradient(135deg, rgba(180, 20, 30, 0.20), rgba(30, 30, 30, 0.9));
+            border: 1px solid rgba(200, 30, 40, 0.35);
+            border-radius: 14px;
+            padding: 18px 28px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 30px rgba(180, 20, 30, 0.08);
+        }
+        .next-banner .label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 3px;
+            color: #c0c0c0;
+            text-transform: uppercase;
+            margin-right: 18px;
+        }
+        .next-banner .label span {
+            color: #d12a2a;
+        }
+        .next-banner .info {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 8px 22px;
+            flex: 1;
+        }
+        .next-banner .info .name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #f5f5f5;
+        }
+        .next-banner .info .meta {
+            font-size: 0.95rem;
+            color: #aaa;
+        }
+        .next-banner .info .meta .loc {
+            color: #d12a2a;
+            font-weight: 500;
+        }
+        .next-banner .countdown {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #f0f0f0;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 4px 22px;
+            border-radius: 40px;
+            border: 1px solid rgba(200, 30, 40, 0.25);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 1px;
+            min-width: 120px;
+            text-align: center;
+        }
+        .next-banner .countdown .unit {
+            font-size: 1rem;
+            font-weight: 300;
+            color: #888;
+            margin: 0 2px;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px 20px;
+            margin-bottom: 28px;
+            align-items: center;
+            background: rgba(20, 20, 20, 0.7);
+            padding: 16px 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(180, 20, 30, 0.15);
+            backdrop-filter: blur(4px);
+        }
+        .controls .search-wrap {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+        .controls .search-wrap input {
+            width: 100%;
+            padding: 10px 18px 10px 44px;
+            border-radius: 40px;
+            border: 1px solid #333;
+            background: #111;
+            color: #eee;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.25s;
+        }
+        .controls .search-wrap input:focus {
+            border-color: #d12a2a;
+            box-shadow: 0 0 20px rgba(200, 30, 40, 0.08);
+        }
+        .controls .search-wrap input::placeholder {
+            color: #555;
+        }
+        .controls .search-wrap .icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #555;
+            font-size: 1.1rem;
+        }
+        .controls .filter-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .controls .filter-wrap label {
+            color: #aaa;
+            font-size: 0.85rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+        .controls .filter-wrap select {
+            padding: 9px 18px;
+            border-radius: 40px;
+            border: 1px solid #333;
+            background: #111;
+            color: #eee;
+            font-size: 0.95rem;
+            outline: none;
+            cursor: pointer;
+            transition: border 0.25s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 40px;
+            min-width: 130px;
+        }
+        .controls .filter-wrap select:focus {
+            border-color: #d12a2a;
+        }
+        .controls .filter-wrap select option {
+            background: #1a1a1a;
+        }
+        .controls .stats {
+            color: #666;
+            font-size: 0.85rem;
+            margin-left: auto;
+            white-space: nowrap;
+        }
+        .controls .stats strong {
+            color: #d12a2a;
+            font-weight: 600;
+        }
+        .results {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+        }
+        .result-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 18px;
+            padding: 12px 20px;
+            background: rgba(18, 18, 18, 0.85);
+            border-radius: 12px;
+            border-left: 4px solid #2a2a2a;
+            transition: background 0.2s, border-color 0.2s;
+            backdrop-filter: blur(2px);
+        }
+        .result-item:hover {
+            background: rgba(30, 30, 30, 0.95);
+        }
+        .result-item .r-time {
+            font-weight: 600;
+            color: #ccc;
+            font-size: 0.95rem;
+            min-width: 70px;
+            font-variant-numeric: tabular-nums;
+        }
+        .result-item .r-name {
+            font-weight: 600;
+            color: #f0f0f0;
+            font-size: 1.05rem;
+            flex: 1;
+            min-width: 130px;
+        }
+        .result-item .r-type {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 3px 14px;
+            border-radius: 30px;
+            background: rgba(60, 60, 60, 0.4);
+            color: #999;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .result-item .r-type.eternal {
+            color: #f0c060;
+            border-color: rgba(240, 192, 96, 0.15);
+            background: rgba(240, 192, 96, 0.06);
+        }
+        .result-item .r-type.secret {
+            color: #70b0e0;
+            border-color: rgba(112, 176, 224, 0.15);
+            background: rgba(112, 176, 224, 0.06);
+        }
+        .result-item .r-type.divine {
+            color: #c080e0;
+            border-color: rgba(192, 128, 224, 0.15);
+            background: rgba(192, 128, 224, 0.06);
+        }
+        .result-item .r-loc {
+            font-size: 0.8rem;
+            color: #888;
+            padding: 2px 12px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            min-width: 70px;
+            text-align: center;
+        }
+        .result-item .r-loc .loc-icon {
+            margin-right: 4px;
+        }
+        .result-item .r-badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 12px;
+            border-radius: 30px;
+            background: rgba(180, 20, 30, 0.12);
+            color: #d12a2a;
+            border: 1px solid rgba(180, 20, 30, 0.12);
+        }
+        .result-item .r-badge.now {
+            background: rgba(180, 20, 30, 0.25);
+            color: #ff5555;
+            border-color: rgba(180, 20, 30, 0.25);
+            animation: pulse-badge 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse-badge {
+            0%,
+            100% {
+                opacity: 0.7;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        .result-item.is-next {
+            border-left-color: #d12a2a;
+            background: rgba(180, 20, 30, 0.08);
+        }
+        .result-item.is-next .r-name {
+            color: #ff7777;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #555;
+        }
+        .empty-state .big {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .empty-state p {
+            font-size: 1.1rem;
+        }
+        .day-divider {
+            color: #444;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            padding: 12px 6px 6px 6px;
+            border-top: 1px solid rgba(180, 20, 30, 0.06);
+            margin-top: 8px;
+        }
+        .day-divider:first-of-type {
+            border-top: none;
+            margin-top: 0;
+        }
+        .error-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #d12a2a;
+        }
+        .error-state .big {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .error-state p {
+            font-size: 1.1rem;
+        }
+        .error-state .retry-btn {
+            margin-top: 20px;
+            padding: 10px 30px;
+            border-radius: 40px;
+            border: 1px solid #d12a2a;
+            background: transparent;
+            color: #d12a2a;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        .error-state .retry-btn:hover {
+            background: rgba(180, 20, 30, 0.15);
+        }
+        @media (max-width: 780px) {
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            .next-banner {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                padding: 16px 18px;
+            }
+            .next-banner .info {
+                gap: 4px 12px;
+            }
+            .next-banner .info .name {
+                font-size: 1.1rem;
+            }
+            .next-banner .countdown {
+                font-size: 1.4rem;
+                padding: 4px 12px;
+                min-width: auto;
+                align-self: center;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 16px;
+            }
+            .controls .stats {
+                margin-left: 0;
+                text-align: right;
+            }
+            .result-item {
+                padding: 10px 14px;
+                gap: 4px 10px;
+            }
+            .result-item .r-time {
+                min-width: 60px;
+                font-size: 0.85rem;
+            }
+            .result-item .r-name {
+                font-size: 0.95rem;
+                min-width: 100px;
+            }
+        }
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.6rem;
+                letter-spacing: 1px;
+            }
+            .next-banner .countdown {
+                font-size: 1.2rem;
+                padding: 2px 10px;
+            }
+            .controls .filter-wrap select {
+                min-width: 100px;
+                font-size: 0.85rem;
+                padding: 7px 14px 7px 14px;
+                padding-right: 34px;
+            }
+            .result-item .r-type {
+                font-size: 0.6rem;
+                padding: 2px 10px;
+            }
+            .result-item .r-loc {
+                font-size: 0.7rem;
+                min-width: 50px;
+            }
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a3a3a;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="network-bg"></canvas>
+
+    <div class="app">
+        <header class="header">
+            <h1>
+                <span class="rmisc">RMISC</span>
+                <span class="predictor">Predictor</span>
+            </h1>
+            <div class="sub">✦ schedule &amp; event tracker ✦</div>
+        </header>
+
+        <div class="next-banner" id="nextBanner">
+            <div class="label">⏳ <span>NEXT</span></div>
+            <div class="info" id="nextInfo">
+                <span class="name" id="nextName">—</span>
+                <span class="meta" id="nextMeta">
+                    <span id="nextTime">--:--</span> &nbsp;·&nbsp;
+                    <span class="loc" id="nextLoc">—</span>
+                </span>
+            </div>
+            <div class="countdown" id="countdownDisplay">
+                <span id="cdHours">00</span><span class="unit">h</span>
+                <span id="cdMinutes">00</span><span class="unit">m</span>
+                <span id="cdSeconds">00</span><span class="unit">s</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="search-wrap">
+                <span class="icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="Search by name ..." autocomplete="off">
+            </div>
+            <div class="filter-wrap">
+                <label for="rangeSelect">📅</label>
+                <select id="rangeSelect">
+                    <option value="today">Today</option>
+                    <option value="1d">+1 Day</option>
+                    <option value="3d">+3 Days</option>
+                    <option value="1w" selected>+1 Week</option>
+                    <option value="2w">+2 Weeks</option>
+                    <option value="1m">+1 Month</option>
+                    <option value="all">All Time</option>
+                </select>
+            </div>
+            <div class="stats" id="statsDisplay">
+                <strong id="countDisplay">0</strong> events
+            </div>
+        </div>
+
+        <div class="results" id="resultsContainer">
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading schedule data...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  CONFIG
+        // ============================================================
+        const DATA_URLS = [
+            'https://cdn.jsdelivr.net/gh/GAL-67/script@main/predict/sae.txt',
+            'saeprdct.txt'  // fallback lokal
+        ];
+
+        // ============================================================
+        //  MONTH MAP
+        // ============================================================
+        const MONTH_MAP = {
+            Januari: 0,
+            Februari: 1,
+            Maret: 2,
+            April: 3,
+            Mei: 4,
+            Juni: 5,
+            Juli: 6,
+            Agustus: 7,
+            September: 8,
+            Oktober: 9,
+            November: 10,
+            Desember: 11
+        };
+
+        // ============================================================
+        //  PARSER - robust, handles both formats
+        // ============================================================
+        function parseData(raw) {
+    const entries = [];
+    const lines = raw.split('\n');
+    
+    let currentDate = null;
+    let currentType = 'unknown';
+
+    for (let line of lines) {
+        line = line.trim();
+        // Lewati baris kosong atau garis pemisah
+        if (!line || line.startsWith('---')) continue;
+
+        // 1. Match Header Tanggal (contoh: *Selasa, Agustus, 18* atau *Selasa, Agustus, 18, 2026*)
+        const dateMatch = line.match(/^\*([A-Za-z]+),\s*([A-Za-z]+),\s*(\d+)(?:,\s*(\d{4}))?\*$/);
+        if (dateMatch) {
+            const monthName = dateMatch[2];
+            const dayNum = parseInt(dateMatch[3], 10);
+            const yearNum = dateMatch[4] ? parseInt(dateMatch[4], 10) : 2026;
+            
+            const month = MONTH_MAP[monthName];
+            if (month !== undefined) {
+                currentDate = new Date(yearNum, month, dayNum);
+            }
+            continue;
+        }
+
+        // 2. Match Tipe Event (*Eternal*, *Secret*, *Divine*)
+        const typeMatch = line.match(/^\*([Ee]ternal|[Ss]ecret|[Dd]ivine)\*$/);
+        if (typeMatch) {
+            currentType = typeMatch[1].toLowerCase();
+            continue;
+        }
+
+        // 3. Match Baris Event (cocok untuk format: • [23.20 WIB] *Nama* _[Lokasi]_)
+        const entryMatch = line.match(/\[(\d{2}\.\d{2})\s*WIB\]\s*\*([^*]+)\*\s*_\[([^\]]+)\]_/);
+        if (entryMatch && currentDate) {
+            const timeStr = entryMatch[1];
+            const name = entryMatch[2].trim();
+            const location = entryMatch[3].trim();
+            
+            const [hh, mm] = timeStr.split('.').map(Number);
+            const dt = new Date(currentDate);
+            dt.setHours(hh, mm, 0, 0);
+
+            entries.push({
+                date: dt,
+                time: timeStr,
+                name: name,
+                type: currentType,
+                location: location,
+                ts: dt.getTime()
+            });
+        }
+    }
+    return entries;
+}
+
+        // Fallback: line-by-line parser
+        function parseLineByLine(raw) {
+            const entries = [];
+            const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            let currentDate = null;
+            let currentType = null;
+
+            for (const line of lines) {
+                const dayMatch = line.match(/^\*([^*]+)\*$/);
+                if (dayMatch) {
+                    const parts = dayMatch[1].split(',').map(s => s.trim());
+                    if (parts.length === 3) {
+                        const monthName = parts[1];
+                        const dayNum = parseInt(parts[2], 10);
+                        const month = MONTH_MAP[monthName];
+                        if (month !== undefined) {
+                            currentDate = new Date(2026, month, dayNum);
+                        }
+                    }
+                    currentType = null;
+                    continue;
+                }
+                const secMatch = line.match(/^\*([Ee]ternal|[Ss]ecret|[Dd]ivine)\*$/);
+                if (secMatch) {
+                    currentType = secMatch[1].toLowerCase();
+                    continue;
+                }
+                const entryMatch = line.match(/^•\s*\[([0-9]{2}\.[0-9]{2})\s*WIB\]\s*\*([^*]+)\*\s*_\[([^\]]+)_$/);
+                if (entryMatch && currentDate && currentType) {
+                    const timeStr = entryMatch[1];
+                    const name = entryMatch[2].trim();
+                    const location = entryMatch[3].trim();
+                    const [hh, mm] = timeStr.split('.').map(Number);
+                    const dt = new Date(currentDate);
+                    dt.setHours(hh, mm, 0, 0);
+                    entries.push({
+                        date: dt,
+                        time: timeStr,
+                        name: name,
+                        type: currentType,
+                        location: location,
+                        ts: dt.getTime()
+                    });
+                }
+            }
+            return entries;
+        }
+
+        // ============================================================
+        //  DATA STORE
+        // ============================================================
+        let allEntries = [];
+        let dataLoaded = false;
+        let loadError = false;
+
+        // ============================================================
+        //  UI REFS
+        // ============================================================
+        const searchInput = document.getElementById('searchInput');
+        const rangeSelect = document.getElementById('rangeSelect');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const countDisplay = document.getElementById('countDisplay');
+        const nextName = document.getElementById('nextName');
+        const nextTime = document.getElementById('nextTime');
+        const nextLoc = document.getElementById('nextLoc');
+        const cdHours = document.getElementById('cdHours');
+        const cdMinutes = document.getElementById('cdMinutes');
+        const cdSeconds = document.getElementById('cdSeconds');
+        const nextBanner = document.getElementById('nextBanner');
+
+        // ============================================================
+        //  HELPERS
+        // ============================================================
+        function formatDate(d) {
+            const opts = { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' };
+            return d.toLocaleDateString('en-US', opts);
+        }
+
+        function getRangeMs(value) {
+            const now = Date.now();
+            switch (value) {
+                case 'today':
+                    const start = new Date();
+                    start.setHours(0, 0, 0, 0);
+                    return { start: start.getTime(), end: start.getTime() + 86400000 - 1 };
+                case '1d':
+                    return { start: now, end: now + 86400000 };
+                case '3d':
+                    return { start: now, end: now + 3 * 86400000 };
+                case '1w':
+                    return { start: now, end: now + 7 * 86400000 };
+                case '2w':
+                    return { start: now, end: now + 14 * 86400000 };
+                case '1m':
+                    return { start: now, end: now + 30 * 86400000 };
+                case 'all':
+                default:
+                    return { start: 0, end: Infinity };
+            }
+        }
+
+        function filterEntries(entries, rangeVal, searchTerm) {
+            const range = getRangeMs(rangeVal);
+            let filtered = entries.filter(e => e.ts >= range.start && e.ts <= range.end);
+            if (searchTerm.trim()) {
+                const term = searchTerm.trim().toLowerCase();
+                filtered = filtered.filter(e => e.name.toLowerCase().includes(term));
+            }
+            filtered.sort((a, b) => a.ts - b.ts);
+            return filtered;
+        }
+
+        // ============================================================
+        //  RENDER
+        // ============================================================
+        function render() {
+            if (!dataLoaded) {
+                resultsContainer.innerHTML = `
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading schedule data...</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (loadError) {
+                resultsContainer.innerHTML = `
+                    <div class="error-state">
+                        <div class="big">⚠️</div>
+                        <p>Failed to load schedule data.</p>
+                        <button class="retry-btn" onclick="loadData()">Retry</button>
+                    </div>
+                `;
+                return;
+            }
+
+            if (allEntries.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="big">📭</div>
+                        <p>No events found in the data.</p>
+                    </div>
+                `;
+                countDisplay.textContent = '0';
+                return;
+            }
+
+            const searchVal = searchInput.value;
+            const rangeVal = rangeSelect.value;
+            const filtered = filterEntries(allEntries, rangeVal, searchVal);
+            countDisplay.textContent = filtered.length;
+
+            const now = Date.now();
+            let nextEvent = null;
+            for (const e of filtered) {
+                if (e.ts >= now) {
+                    nextEvent = e;
+                    break;
+                }
+            }
+
+            if (nextEvent) {
+                nextName.textContent = nextEvent.name;
+                nextTime.textContent = nextEvent.time + ' WIB';
+                nextLoc.textContent = nextEvent.location;
+                nextBanner.style.display = 'flex';
+            } else {
+                nextName.textContent = '—';
+                nextTime.textContent = '--:--';
+                nextLoc.textContent = '—';
+                nextBanner.style.display = 'flex';
+            }
+
+            if (filtered.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="big">🔮</div>
+                        <p>No events found for this range.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+let lastDay = '';
+
+for (const e of filtered) {
+    const dayLabel = formatDate(e.date);
+    const isNext = (e === nextEvent);
+
+    if (dayLabel !== lastDay) {
+        html += `<div class="day-divider">${dayLabel}</div>`;
+        lastDay = dayLabel;
+    }
+
+    html += `
+        <div class="result-item ${isNext ? 'is-next' : ''}">
+            <div class="r-time">${e.time} WIB</div>
+            <div class="r-name">${e.name}</div>
+            <div class="r-type ${e.type}">${e.type}</div>
+            <div class="r-loc"><span class="loc-icon">📍</span>${e.location}</div>
+            ${isNext ? '<div class="r-badge now">NEXT</div>' : ''}
+        </div>`;
+}
+
+resultsContainer.innerHTML = html;
+        }
+
+        // ============================================================
+        //  COUNTDOWN
+        // ============================================================
+        function updateCountdown() {
+            if (!dataLoaded || allEntries.length === 0) {
+                cdHours.textContent = '--';
+                cdMinutes.textContent = '--';
+                cdSeconds.textContent = '--';
+                return;
+            }
+            const now = Date.now();
+            let next = null;
+            for (const e of allEntries) {
+                if (e.ts >= now) {
+                    next = e;
+                    break;
+                }
+            }
+            if (!next) {
+                cdHours.textContent = '∞';
+                cdMinutes.textContent = '∞';
+                cdSeconds.textContent = '∞';
+                return;
+            }
+            let diff = next.ts - now;
+            if (diff < 0) diff = 0;
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            cdHours.textContent = String(h).padStart(2, '0');
+            cdMinutes.textContent = String(m).padStart(2, '0');
+            cdSeconds.textContent = String(s).padStart(2, '0');
+        }
+
+        // ============================================================
+        //  LOAD DATA with fallback
+        // ============================================================
+        async function loadData() {
+            resultsContainer.innerHTML = `
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading schedule data...</p>
+                </div>
+            `;
+
+            for (const url of DATA_URLS) {
+                try {
+                    const response = await fetch(url, { mode: 'cors' });
+                    if (!response.ok) continue;
+                    const raw = await response.text();
+                    const parsed = parseData(raw);
+                    if (parsed.length > 0) {
+                        allEntries = parsed;
+                        dataLoaded = true;
+                        loadError = false;
+                        render();
+                        updateCountdown();
+                        console.log(`✅ Loaded ${allEntries.length} events from ${url}`);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn(`Failed to load from ${url}:`, e);
+                }
+            }
+
+            // All failed
+            loadError = true;
+            dataLoaded = true;
+            render();
+        }
+
+        // ============================================================
+        //  NETWORK BG (Canvas)
+        // ============================================================
+        (function initNetwork() {
+            const canvas = document.getElementById('network-bg');
+            const ctx = canvas.getContext('2d');
+            let W, H;
+            const nodes = [];
+            const NUM_NODES = 65;
+            const MAX_DIST = 140;
+
+            function resize() {
+                W = canvas.width = window.innerWidth;
+                H = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            class Node {
+                constructor() {
+                    this.x = Math.random() * W;
+                    this.y = Math.random() * H;
+                    this.vx = (Math.random() - 0.5) * 0.4;
+                    this.vy = (Math.random() - 0.5) * 0.4;
+                    this.r = 1.8 + Math.random() * 2.5;
+                }
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    if (this.x < 0 || this.x > W) this.vx *= -1;
+                    if (this.y < 0 || this.y > H) this.vy *= -1;
+                }
+            }
+
+            for (let i = 0; i < NUM_NODES; i++) {
+                nodes.push(new Node());
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, W, H);
+                ctx.strokeStyle = 'rgba(180,30,40,0.10)';
+                ctx.lineWidth = 0.7;
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const dx = nodes[i].x - nodes[j].x;
+                        const dy = nodes[i].y - nodes[j].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < MAX_DIST) {
+                            const alpha = 0.08 * (1 - dist / MAX_DIST);
+                            ctx.strokeStyle = `rgba(180,30,40,${alpha})`;
+                            ctx.beginPath();
+                            ctx.moveTo(nodes[i].x, nodes[i].y);
+                            ctx.lineTo(nodes[j].x, nodes[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+                for (const n of nodes) {
+                    const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r * 2.5);
+                    grad.addColorStop(0, 'rgba(200,50,60,0.35)');
+                    grad.addColorStop(1, 'rgba(180,30,40,0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, n.r * 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(200,60,70,0.5)';
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, n.r * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                    ctx.beginPath();
+                    ctx.arc(n.x - n.r * 0.25, n.y - n.r * 0.25, n.r * 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                for (let i = 0; i < 3; i++) {
+                    const idx = Math.floor(Math.random() * nodes.length);
+                    const n = nodes[idx];
+                    ctx.strokeStyle = `rgba(180,30,40,0.02)`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, 30 + i * 20, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                for (const n of nodes) n.update();
+                requestAnimationFrame(draw);
+            }
+            draw();
+        })();
+
+        // ============================================================
+        //  EVENTS & INIT
+        // ============================================================
+        searchInput.addEventListener('input', render);
+        rangeSelect.addEventListener('change', render);
+        setInterval(updateCountdown, 1000);
+        setInterval(render, 5000);
+
+        // Start loading
+        loadData();
+    </script>
+</body>
+</html>
