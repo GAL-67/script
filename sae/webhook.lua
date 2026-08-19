@@ -17,12 +17,15 @@ local PET_RARITY_MAP = {
 local ALLOWED_RARITIES = { ["Divine"] = "DIVINE", ["Eternal"] = "ETERNAL", ["Secret"] = "SECRET" }
 local RARITY_ORDER = {"DIVINE", "ETERNAL", "SECRET"}
 
--- Helper File System (Membaca & Menyimpan File Lokal)
+-- Helper File System
 local function getSavedWebhook()
     if isfile and isfile(FILE_NAME) then
-        return readfile(FILE_NAME)
+        local content = readfile(FILE_NAME)
+        if content and content:match("%S") then
+            return content:gsub("%s+", "") -- Clean whitespace
+        end
     end
-    return ""
+    return nil
 end
 
 local function saveWebhook(url)
@@ -181,8 +184,8 @@ local function sendInventoryWebhook(url)
     end
 end
 
--- Membuat User Interface (GUI) untuk Save Webhook
-local function buildUI()
+-- Membuat User Interface (GUI) jika file wh.txt belum ada
+local function createUI()
     if CoreGui:FindFirstChild("WebhookSaverUI") then
         CoreGui.WebhookSaverUI:Destroy()
     end
@@ -192,8 +195,8 @@ local function buildUI()
     ScreenGui.Parent = CoreGui
 
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 320, 0, 140)
-    MainFrame.Position = UDim2.new(0.5, -160, 0.4, 0)
+    MainFrame.Size = UDim2.new(0, 300, 0, 130)
+    MainFrame.Position = UDim2.new(0.5, -150, 0.4, 0)
     MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     MainFrame.BorderSizePixel = 0
     MainFrame.Active = true
@@ -206,7 +209,7 @@ local function buildUI()
 
     local TitleLabel = Instance.new("TextLabel")
     TitleLabel.Size = UDim2.new(1, 0, 0, 30)
-    TitleLabel.Text = "Webhook Configuration"
+    TitleLabel.Text = "Enter Webhook URL"
     TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     TitleLabel.TextSize = 14
     TitleLabel.Font = Enum.Font.SourceSansBold
@@ -217,7 +220,7 @@ local function buildUI()
     TextBox.Size = UDim2.new(0.9, 0, 0, 35)
     TextBox.Position = UDim2.new(0.05, 0, 0.28, 0)
     TextBox.PlaceholderText = "Paste Webhook URL Here..."
-    TextBox.Text = getSavedWebhook()
+    TextBox.Text = ""
     TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     TextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     TextBox.BorderSizePixel = 0
@@ -232,9 +235,9 @@ local function buildUI()
     TextCorner.Parent = TextBox
 
     local SaveBtn = Instance.new("TextButton")
-    SaveBtn.Size = UDim2.new(0.42, 0, 0, 30)
+    SaveBtn.Size = UDim2.new(0.9, 0, 0, 30)
     SaveBtn.Position = UDim2.new(0.05, 0, 0.65, 0)
-    SaveBtn.Text = "Save Webhook"
+    SaveBtn.Text = "Save & Send"
     SaveBtn.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
     SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     SaveBtn.Font = Enum.Font.SourceSansBold
@@ -245,43 +248,28 @@ local function buildUI()
     SaveCorner.CornerRadius = UDim.new(0, 5)
     SaveCorner.Parent = SaveBtn
 
-    local SendBtn = Instance.new("TextButton")
-    SendBtn.Size = UDim2.new(0.42, 0, 0, 30)
-    SendBtn.Position = UDim2.new(0.53, 0, 0.65, 0)
-    SendBtn.Text = "Send Now"
-    SendBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-    SendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SendBtn.Font = Enum.Font.SourceSansBold
-    SendBtn.TextSize = 13
-    SendBtn.Parent = MainFrame
-
-    local SendCorner = Instance.new("UICorner")
-    SendCorner.CornerRadius = UDim.new(0, 5)
-    SendCorner.Parent = SendBtn
-
-    -- Event Listeners
+    -- Event Handler ketika tombol diklik
     SaveBtn.MouseButton1Click:Connect(function()
-        saveWebhook(TextBox.Text)
-        SaveBtn.Text = "Saved!"
-        task.wait(1)
-        SaveBtn.Text = "Save Webhook"
-    end)
-
-    SendBtn.MouseButton1Click:Connect(function()
-        local currentUrl = TextBox.Text
-        if currentUrl ~= "" then
-            saveWebhook(currentUrl)
-            sendInventoryWebhook(currentUrl)
-            SendBtn.Text = "Sent!"
-            task.wait(1)
-            SendBtn.Text = "Send Now"
+        local inputUrl = TextBox.Text:gsub("%s+", "")
+        if inputUrl ~= "" then
+            saveWebhook(inputUrl)
+            sendInventoryWebhook(inputUrl)
+            ScreenGui:Destroy() -- Hapus UI langsung setelah disimpan & dikirim
         else
-            SendBtn.Text = "No URL!"
+            SaveBtn.Text = "URL Cannot Be Empty!"
             task.wait(1)
-            SendBtn.Text = "Send Now"
+            SaveBtn.Text = "Save & Send"
         end
     end)
 end
 
--- Jalankan UI
-buildUI()
+-- Main Execution Logic
+local savedUrl = getSavedWebhook()
+
+if savedUrl then
+    -- Jika wh.txt sudah ada, langsung kirim tanpa tampilkan UI
+    sendInventoryWebhook(savedUrl)
+else
+    -- Jika wh.txt belum ada, tampilkan UI untuk input
+    createUI()
+end
