@@ -212,8 +212,10 @@ local function sendInventoryWebhook(url)
     if not hasPlaced then table.insert(contentLines, "_No Divine, Eternal, or Secret pets placed._\n") end
 
     -- Total Summaries
+    local grandTotalIncome = placedIncome + invIncome
     table.insert(contentLines, string.format("*Total Placed Pet: %s*", formatNumber(placedIncome)))
-    table.insert(contentLines, string.format("*Total Inventory: %s*", formatNumber(invIncome + placedIncome)))
+    table.insert(contentLines, string.format("*Total Inventory: %s*", formatNumber(invIncome)))
+    table.insert(contentLines, string.format("*Total Pet Income: %s*", formatNumber(grandTotalIncome)))
 
     local payload = HttpService:JSONEncode({
         embeds = {{
