@@ -176,6 +176,7 @@ local function sendInventoryWebhook(url)
     local invData, invIncome, invCount = getInventoryData()
     local placedData, placedCount = getPlacedPetData()
     local placedIncome = getLeaderstatsMoneyPerSecond() -- Ambil dari leaderstats "Money/s"
+    local totalPetIncome = invIncome + placedIncome
     
     local contentLines = {}
 
@@ -211,11 +212,10 @@ local function sendInventoryWebhook(url)
     end
     if not hasPlaced then table.insert(contentLines, "_No Divine, Eternal, or Secret pets placed._\n") end
 
-    -- Total Summaries
-    local grandTotalIncome = placedIncome + invIncome
+    -- Separate Total Income Summaries
     table.insert(contentLines, string.format("*Total Placed Pet: %s*", formatNumber(placedIncome)))
     table.insert(contentLines, string.format("*Total Inventory: %s*", formatNumber(invIncome)))
-    table.insert(contentLines, string.format("*Total Pet Income: %s*", formatNumber(grandTotalIncome)))
+    table.insert(contentLines, string.format("*Total Pet Income: %s*", formatNumber(totalPetIncome)))
 
     local payload = HttpService:JSONEncode({
         embeds = {{
