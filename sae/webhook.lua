@@ -17,12 +17,15 @@ local PET_RARITY_MAP = {
 local ALLOWED_RARITIES = { ["Divine"] = "DIVINE", ["Eternal"] = "ETERNAL", ["Secret"] = "SECRET" }
 local RARITY_ORDER = {"DIVINE", "ETERNAL", "SECRET"}
 
--- Helper File System
+-- Helper File System (Sanitasi String)
 local function getSavedWebhook()
     if isfile and isfile(FILE_NAME) then
         local content = readfile(FILE_NAME)
-        if content and content:match("%S") then
-            return content:gsub("%s+", "") -- Clean whitespace
+        if content then
+            content = content:gsub("[%s\r\n\t]", "")
+            if #content > 10 and string.sub(content, 1, 4) == "http" then
+                return content
+            end
         end
     end
     return nil
@@ -30,7 +33,8 @@ end
 
 local function saveWebhook(url)
     if writefile then
-        writefile(FILE_NAME, url)
+        local cleanUrl = url:gsub("[%s\r\n\t]", "")
+        writefile(FILE_NAME, cleanUrl)
     end
 end
 
@@ -59,7 +63,19 @@ local function parseFormattedRate(rateStr)
     return num
 end
 
--- Scraping Data Inventory & Placed Pet
+-- Helper Ambil Leaderstats "Money/s"
+local function getLeaderstatsMoneyPerSecond()
+    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+    if leaderstats then
+        local moneyPerSec = leaderstats:FindFirstChild("Money/s") or leaderstats:FindFirstChild("Money/sec") or leaderstats:FindFirstChild("Money / s")
+        if moneyPerSec then
+            return tonumber(moneyPerSec.Value) or 0
+        end
+    end
+    return 0
+end
+
+-- Scraping Data Inventory & Sorting (Highest to Lowest Income)
 local function getInventoryData()
     local categorized = { ["DIVINE"] = {}, ["ETERNAL"] = {}, ["SECRET"] = {} }
     local totalIncome, itemCount = 0, 0
@@ -84,20 +100,33 @@ local function getInventoryData()
                         if mutation and tostring(mutation) ~= "" then
                             itemLine = itemLine .. string.format(" (%s)", tostring(mutation))
                         end
-                        table.insert(categorized[categoryKey], itemLine)
+
+                        table.insert(categorized[categoryKey], {
+                            text = itemLine,
+                            income = perSecond
+                        })
                     end
                 end
             end
         end
     end
+
+    -- Sorting High to Low
+    for _, group in pairs(categorized) do
+        table.sort(group, function(a, b)
+            return a.income > b.income
+        end)
+    end
+
     return categorized, totalIncome, itemCount
 end
 
+-- Scraping Data Placed Pet & Sorting
 local function getPlacedPetData()
     local categorized = { ["DIVINE"] = {}, ["ETERNAL"] = {}, ["SECRET"] = {} }
-    local totalIncome, itemCount = 0, 0
+    local itemCount = 0
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return categorized, totalIncome, itemCount end
+    if not playerGui then return categorized, itemCount end
 
     local notepadFrame = playerGui:FindFirstChild("PetList")
         and playerGui.PetList:FindFirstChild("Frame")
@@ -118,8 +147,12 @@ local function getPlacedPetData()
                     for baseName, categoryKey in pairs(PET_RARITY_MAP) do
                         if string.find(petName, baseName) then
                             itemCount = itemCount + 1
-                            if rateStr then totalIncome = totalIncome + parseFormattedRate(rateStr) end
-                            table.insert(categorized[categoryKey], rawText)
+                            local numValue = rateStr and parseFormattedRate(rateStr) or 0
+
+                            table.insert(categorized[categoryKey], {
+                                text = rawText,
+                                income = numValue
+                            })
                             break
                         end
                     end
@@ -127,15 +160,26 @@ local function getPlacedPetData()
             end
         end
     end
-    return categorized, totalIncome, itemCount
+
+    -- Sorting High to Low
+    for _, group in pairs(categorized) do
+        table.sort(group, function(a, b)
+            return a.income > b.income
+        end)
+    end
+
+    return categorized, itemCount
 end
 
--- Kirim Webhook
+-- Send Webhook Function
 local function sendInventoryWebhook(url)
     local invData, invIncome, invCount = getInventoryData()
-    local placedData, placedIncome, placedCount = getPlacedPetData()
+    local placedData, placedCount = getPlacedPetData()
+    local placedIncome = getLeaderstatsMoneyPerSecond() -- Ambil dari leaderstats "Money/s"
+    
     local contentLines = {}
 
+    -- Inventory Section
     table.insert(contentLines, string.format("*%s's Inventory [%d]*\n", LocalPlayer.Name, invCount))
     local hasInv = false
     for _, rarityGroup in ipairs(RARITY_ORDER) do
@@ -143,12 +187,15 @@ local function sendInventoryWebhook(url)
         if items and #items > 0 then
             hasInv = true
             table.insert(contentLines, string.format("*%s*", rarityGroup))
-            for _, itemString in ipairs(items) do table.insert(contentLines, itemString) end
+            for _, itemObj in ipairs(items) do 
+                table.insert(contentLines, itemObj.text) 
+            end
             table.insert(contentLines, "")
         end
     end
     if not hasInv then table.insert(contentLines, "_No Divine, Eternal, or Secret items in inventory._\n") end
 
+    -- Placed Pet Section
     table.insert(contentLines, string.format("*Placed Pet [%d]*\n", placedCount))
     local hasPlaced = false
     for _, rarityGroup in ipairs(RARITY_ORDER) do
@@ -156,12 +203,16 @@ local function sendInventoryWebhook(url)
         if items and #items > 0 then
             hasPlaced = true
             table.insert(contentLines, string.format("*%s*", rarityGroup))
-            for _, itemString in ipairs(items) do table.insert(contentLines, itemString) end
+            for _, itemObj in ipairs(items) do 
+                table.insert(contentLines, itemObj.text) 
+            end
             table.insert(contentLines, "")
         end
     end
     if not hasPlaced then table.insert(contentLines, "_No Divine, Eternal, or Secret pets placed._\n") end
 
+    -- Total Summaries
+    table.insert(contentLines, string.format("*Total Placed Pet: %s*", formatNumber(placedIncome)))
     table.insert(contentLines, string.format("*Total Inventory: %s*", formatNumber(invIncome + placedIncome)))
 
     local payload = HttpService:JSONEncode({
@@ -184,7 +235,7 @@ local function sendInventoryWebhook(url)
     end
 end
 
--- Membuat User Interface (GUI) jika file wh.txt belum ada
+-- Create ScreenGUI UI
 local function createUI()
     if CoreGui:FindFirstChild("WebhookSaverUI") then
         CoreGui.WebhookSaverUI:Destroy()
@@ -248,28 +299,25 @@ local function createUI()
     SaveCorner.CornerRadius = UDim.new(0, 5)
     SaveCorner.Parent = SaveBtn
 
-    -- Event Handler ketika tombol diklik
     SaveBtn.MouseButton1Click:Connect(function()
-        local inputUrl = TextBox.Text:gsub("%s+", "")
-        if inputUrl ~= "" then
+        local inputUrl = TextBox.Text:gsub("[%s\r\n\t]", "")
+        if #inputUrl > 10 and string.sub(inputUrl, 1, 4) == "http" then
             saveWebhook(inputUrl)
             sendInventoryWebhook(inputUrl)
-            ScreenGui:Destroy() -- Hapus UI langsung setelah disimpan & dikirim
+            ScreenGui:Destroy()
         else
-            SaveBtn.Text = "URL Cannot Be Empty!"
+            SaveBtn.Text = "Invalid Webhook URL!"
             task.wait(1)
             SaveBtn.Text = "Save & Send"
         end
     end)
 end
 
--- Main Execution Logic
+-- Entry Point
 local savedUrl = getSavedWebhook()
 
 if savedUrl then
-    -- Jika wh.txt sudah ada, langsung kirim tanpa tampilkan UI
     sendInventoryWebhook(savedUrl)
 else
-    -- Jika wh.txt belum ada, tampilkan UI untuk input
     createUI()
 end
