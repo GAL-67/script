@@ -1,7 +1,7 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
-local FILE_NAME = "wh.txt"
+local FILE_NAME = "whs.txt"
 
 -- Fungsi untuk mengirim webhook Discord
 local function sendWebhook(webhookUrl)
