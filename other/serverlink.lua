@@ -11,20 +11,20 @@ local function sendWebhook(webhookUrl)
     local jobid = game.JobId
     local playerName = Players.LocalPlayer.Name
 
-    -- Format Deep Link Server Roblox
-    local serverLink = string.format("https://www.roblox.com/games/start?placeId=%s&instanceId=%s", tostring(placeId), jobid)
+    -- URL Deep Link langsung
+    local deepLink = string.format("https://www.roblox.com/games/start?placeId=%s&instanceId=%s", tostring(placeId), jobid)
+    
     local timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
-    -- Fix Clickable Link: Gunakan format <URL> agar Discord mengenali protokol deeplink
-    local descriptionText = string.format("🔗 **Click to Join:**\n<%s>\n\n📋 **Copy Link (Mobile):**\n`%s`", serverLink, serverLink)
-
-    -- Format Payload Embed Discord (Warna Putih: 16777215)
+    -- Format Payload Embed Discord
     local payload = {
         embeds = {
             {
                 title = playerName,
-                description = descriptionText,
-                color = 16777215,
+                -- 1. [JOIN SERVER HERE] akan menjadi tombol link biru aktif yang bisa diklik langsung.
+                -- 2. Format `code` di bawahnya khusus untuk kemudahan one-tap copy di mobile.
+                description = string.format("🚀 **[👉 CLICK HERE TO JOIN SERVER 👈](%s)**\n\n📋 **Direct Link (Tap to Copy):**\n`%s`", deepLink, deepLink),
+                color = 16777215, -- Warna Putih
                 timestamp = timestamp
             }
         }
