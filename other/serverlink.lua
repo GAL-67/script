@@ -11,37 +11,51 @@ local function sendWebhook(webhookUrl)
     local jobid = game.JobId
     local playerName = Players.LocalPlayer.Name
 
-    -- URL Deep Link langsung
-    local deepLink = string.format("https://www.roblox.com/games/start?placeId=%s&instanceId=%s", tostring(placeId), jobid)
-    
+    -- Format Link Server Roblox
+    local serverLink = string.format("https://www.roblox.com/games/start?placeId=%s&instanceId=%s", tostring(placeId), jobid)
     local timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
-    -- Format Payload Embed Discord
+    -- Payload Embed Discord
     local payload = {
         embeds = {
             {
-                title = playerName,
-                -- 1. [JOIN SERVER HERE] akan menjadi tombol link biru aktif yang bisa diklik langsung.
-                -- 2. Format `code` di bawahnya khusus untuk kemudahan one-tap copy di mobile.
-                description = string.format("🚀 **[👉 CLICK HERE TO JOIN SERVER 👈](%s)**\n\n📋 **Direct Link (Tap to Copy):**\n`%s`", deepLink, deepLink),
+                title = "👤 " .. playerName,
+                url = serverLink, -- [PENTING] Menjadikan Header / Title bisa diklik langsung untuk join!
                 color = 16777215, -- Warna Putih
-                timestamp = timestamp
+                timestamp = timestamp,
+                fields = {
+                    {
+                        name = "🔗 Click to Join Server",
+                        value = string.format("[👉 Join %s's Server 👈](%s)", playerName, serverLink),
+                        inline = false
+                    },
+                    {
+                        name = "📋 Mobile Copy Link",
+                        value = string.format("`%s`", serverLink),
+                        inline = false
+                    }
+                },
+                footer = {
+                    text = "Server Link Log"
+                }
             }
         }
     }
 
-    -- HTTP Request kompatibel dengan Delta
+    -- HTTP Request kompatibel dengan Delta / Executor Mobile
     local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
 
     if requestFunc then
-        requestFunc({
-            Url = webhookUrl,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = HttpService:JSONEncode(payload)
-        })
+        task.defer(function()
+            requestFunc({
+                Url = webhookUrl,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json"
+                },
+                Body = HttpService:JSONEncode(payload)
+            })
+        end)
     else
         warn("Executor tidak mendukung HTTP request.")
     end
@@ -56,7 +70,7 @@ if isfile and isfile(FILE_NAME) then
     end
 end
 
--- Jika wh.txt belum ada, buat GUI untuk input Webhook
+-- UI Loader Jika wh.txt Belum Ada
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local UICorner = Instance.new("UICorner")
@@ -66,11 +80,9 @@ local BoxCorner = Instance.new("UICorner")
 local SubmitBtn = Instance.new("TextButton")
 local BtnCorner = Instance.new("UICorner")
 
--- Parent GUI ke CoreGui / PlayerGui
 ScreenGui.Name = "WebhookLoaderUI"
 ScreenGui.Parent = (gethui and gethui()) or game:GetService("CoreGui") or Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Frame Utama
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 320, 0, 180)
 MainFrame.Position = UDim2.new(0.5, -160, 0.5, -90)
@@ -83,7 +95,6 @@ MainFrame.Parent = ScreenGui
 UICorner.CornerRadius = UDim.new(0, 10)
 UICorner.Parent = MainFrame
 
--- Title
 Title.Name = "Title"
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
@@ -93,7 +104,6 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Parent = MainFrame
 
--- Input Box (TextBox)
 WebhookBox.Name = "WebhookBox"
 WebhookBox.Size = UDim2.new(0.88, 0, 0, 40)
 WebhookBox.Position = UDim2.new(0.06, 0, 0.3, 0)
@@ -111,7 +121,6 @@ WebhookBox.Parent = MainFrame
 BoxCorner.CornerRadius = UDim.new(0, 8)
 BoxCorner.Parent = WebhookBox
 
--- Submit Button
 SubmitBtn.Name = "SubmitBtn"
 SubmitBtn.Size = UDim2.new(0.88, 0, 0, 38)
 SubmitBtn.Position = UDim2.new(0.06, 0, 0.65, 0)
@@ -126,7 +135,6 @@ SubmitBtn.Parent = MainFrame
 BtnCorner.CornerRadius = UDim.new(0, 8)
 BtnCorner.Parent = SubmitBtn
 
--- Event Listener saat Tombol Submit Diklik
 SubmitBtn.MouseButton1Click:Connect(function()
     local inputUrl = WebhookBox.Text:match("^%s*(.-)%s*$")
     
