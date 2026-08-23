@@ -15,12 +15,15 @@ local function sendWebhook(webhookUrl)
     local serverLink = string.format("https://www.roblox.com/games/start?placeId=%s&instanceId=%s", tostring(placeId), jobid)
     local timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
+    -- Fix Clickable Link: Gunakan format <URL> agar Discord mengenali protokol deeplink
+    local descriptionText = string.format("🔗 **Click to Join:**\n<%s>\n\n📋 **Copy Link (Mobile):**\n`%s`", serverLink, serverLink)
+
     -- Format Payload Embed Discord (Warna Putih: 16777215)
     local payload = {
         embeds = {
             {
                 title = playerName,
-                description = string.format("[%s](%s)\n`%s`", serverLink, serverLink, serverLink),
+                description = descriptionText,
                 color = 16777215,
                 timestamp = timestamp
             }
@@ -63,7 +66,7 @@ local BoxCorner = Instance.new("UICorner")
 local SubmitBtn = Instance.new("TextButton")
 local BtnCorner = Instance.new("UICorner")
 
--- Parent GUI ke CoreGui atau PlayerGui
+-- Parent GUI ke CoreGui / PlayerGui
 ScreenGui.Name = "WebhookLoaderUI"
 ScreenGui.Parent = (gethui and gethui()) or game:GetService("CoreGui") or Players.LocalPlayer:WaitForChild("PlayerGui")
 
@@ -125,18 +128,14 @@ BtnCorner.Parent = SubmitBtn
 
 -- Event Listener saat Tombol Submit Diklik
 SubmitBtn.MouseButton1Click:Connect(function()
-    local inputUrl = WebhookBox.Text:match("^%s*(.-)%s*$") -- Clean whitespace
+    local inputUrl = WebhookBox.Text:match("^%s*(.-)%s*$")
     
     if inputUrl and inputUrl ~= "" then
-        -- Save ke wh.txt di workspace executor
         if writefile then
             writefile(FILE_NAME, inputUrl)
         end
         
-        -- Destroy UI
         ScreenGui:Destroy()
-        
-        -- Eksekusi Pengiriman Webhook
         sendWebhook(inputUrl)
     end
 end)
