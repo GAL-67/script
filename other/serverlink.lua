@@ -13,6 +13,10 @@ local function sendWebhook(webhookUrl)
 
     -- Format Link Server Roblox
     local serverLink = string.format("https://www.roblox.com/games/start?placeId=%s&instanceId=%s", tostring(placeId), jobid)
+    
+    -- Script Luau untuk auto-join ke server ini
+    local joinScript = string.format("game:GetService('TeleportService'):TeleportToPlaceInstance(%s, '%s', game:GetService('Players').LocalPlayer)", tostring(placeId), jobid)
+    
     local timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
     -- Payload Embed Discord
@@ -20,7 +24,7 @@ local function sendWebhook(webhookUrl)
         embeds = {
             {
                 title = "👤 " .. playerName,
-                url = serverLink, -- [PENTING] Menjadikan Header / Title bisa diklik langsung untuk join!
+                url = serverLink, -- Header bisa diklik langsung
                 color = 16777215, -- Warna Putih
                 timestamp = timestamp,
                 fields = {
@@ -32,6 +36,11 @@ local function sendWebhook(webhookUrl)
                     {
                         name = "📋 Mobile Copy Link",
                         value = string.format("`%s`", serverLink),
+                        inline = false
+                    },
+                    {
+                        name = "📜 Join Script (Executor)",
+                        value = string.format("`%s`", joinScript),
                         inline = false
                     }
                 },
