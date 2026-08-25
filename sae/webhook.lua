@@ -8,9 +8,9 @@ local FILE_NAME = "wh.txt"
 -- Mapping Rarity untuk Placed Pet
 local PET_RARITY_MAP = {
     ["Unicorn"] = "DIVINE",
-    ["Mosasaurus"] = "ETERNAL", ["Ice Dragon"] = "ETERNAL", ["Eternal Lunar Dragon"] = "ETERNAL",
+    ["Mosasaurus"] = "ETERNAL", ["Oni Tiger"] = "ETERNAL", ["Ice Dragon"] = "ETERNAL", ["Eternal Lunar Dragon"] = "ETERNAL",
     ["Phoenix"] = "ETERNAL", ["El Maja"] = "ETERNAL", ["Lava Dragon"] = "ETERNAL",
-    ["Tralaledon"] = "SECRET", ["TRex"] = "SECRET", ["Cosmic Skeleton"] = "SECRET",
+    ["Tralaledon"] = "SECRET", ["Stag"] = "SECRET", ["TRex"] = "SECRET", ["Cosmic Skeleton"] = "SECRET",
     ["Cosmic Dragon"] = "SECRET", ["Cerberus"] = "SECRET", ["Yeti Kraken"] = "SECRET"
 }
 
