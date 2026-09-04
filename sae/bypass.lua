@@ -1,5 +1,6 @@
+
 -- ====================================================================
--- SCRIPT PASIF: AUTO-COPY TO CLIPBOARD (TARUH DI PALING ATAS)
+-- SCRIPT PASIF: AUTO-COPY VIA SETCLIPBOARD (TARUH DI PALING ATAS)
 -- ====================================================================
 local original_print = print
 local dumped = false
@@ -12,14 +13,14 @@ _G.print = function(...)
                 local target = adv or arg
                 dumped = true
                 
-                -- Jalankan pembacaan di background agar eksekusi memori efisien
+                -- Jalankan ekstraksi di background agar thread executor tidak freeze
                 task.spawn(function()
-                    original_print("[+] Mendeteksi tabel Luast! Memulai ekstraksi ke Clipboard...")
+                    original_print("[+] Mendeteksi tabel Luast! Memproses ekstraksi data...")
                     
                     local dumpBuffer = {"--- [LUAST EXTRACTED STRINGS DUMP] ---"}
                     local count = 0
                     
-                    -- Masukkan semua data string dan angka ke tabel buffer
+                    -- Iterasi isi tabel
                     for index, value in pairs(target) do
                         if type(value) == "string" then
                             table.insert(dumpBuffer, string.format("adv[%s] -> STRING: %q", tostring(index), value))
@@ -29,7 +30,7 @@ _G.print = function(...)
                             count = count + 1
                         end
                         
-                        -- Beri jeda sangat kecil setiap 200 baris agar tidak memicu deteksi freeze
+                        -- Jeda berkala setiap 200 item agar memori aman dari crash
                         if count % 200 == 0 then
                             task.wait()
                         end
@@ -37,23 +38,21 @@ _G.print = function(...)
                     
                     table.insert(dumpBuffer, string.format("\n--- [TOTAL EKSTRAKSI: %d DATA] ---", count))
                     
-                    -- Menggabungkan seluruh baris menjadi satu teks string besar
+                    -- Gabungkan data menjadi satu kesatuan teks besar
                     local finalPayload = table.concat(dumpBuffer, "\n")
                     
-                    -- Menggunakan fungsi bawaan executor untuk menyalin ke clipboard perangkat
-                    local setClip = setclipboard or toclipboard
-                    if setClip then
-                        setClip(finalPayload)
-                        original_print("--------------------------------------------------")
-                        print("[+] BERHASIL! Seluruh string asli telah disalin ke clipboard.")
-                        print("[+] Silakan langsung buka Notepad lalu tekan 'CTRL + V' (Paste).")
-                        original_print("--------------------------------------------------")
-                    else
-                        warn("[-] Executor Anda tidak mendukung fungsi setclipboard/toclipboard.")
-                    end
+                    -- Paksa masuk ke clipboard menggunakan setclipboard asli
+                    pcall(function()
+                        setclipboard(finalPayload)
+                    end)
+                    
+                    original_print("--------------------------------------------------")
+                    original_print("[+] BERHASIL! Seluruh data disalin via setclipboard.")
+                    original_print("[+] Silakan langsung buka Notepad lalu tekan 'CTRL + V'.")
+                    original_print("--------------------------------------------------")
                 end)
                 
-                -- Hentikan script utama agar aman
+                -- Putus paksa alur utama script perlindungan agar tidak memicu crash loop
                 error("Proteksi dilewati. Hasil ekstraksi dialihkan ke clipboard.")
             end
         end
