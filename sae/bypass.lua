@@ -1,46 +1,64 @@
 -- ====================================================================
--- SCRIPT PENJEBAK OTOMATIS (TARUH DI PALING ATAS SCRIPT ANDA)
+-- SCRIPT PASIF: AUTO-SAVE TO WORKSPACE (TARUH DI PALING ATAS)
 -- ====================================================================
-local original_task_spawn = task.spawn
+local original_print = print
+local dumped = false
 
--- Luast selalu menggunakan task.spawn untuk menjalankan fungsinya sendiri.
--- Kita bajak task.spawn untuk mengintip memori tabel 'adv' secara instan.
-task.spawn = hookfunction(task.spawn, function(...)
-    -- Cari apakah ada tabel 'adv' di memori global saat fungsi ini dipicu
-    if _G.adv or adv then
-        local targetTable = _G.adv or adv
-        if type(targetTable) == "table" then
-            print("--------------------------------------------------")
-            print("[+] LUAST BERHASIL DICEGAT VIA HOOKING FUNCTION!")
-            print("--------------------------------------------------")
-            
-            local count = 0
-            for index, value in pairs(targetTable) do
-                count = count + 1
-                if type(value) == "string" then
-                    task.wait()
-                    print(string.format("adv[%s] -> STRING: %q", tostring(index), value))
-                elseif type(value) == "number" then
-                    task.wait()
-                    print(string.format("adv[%s] -> NUMBER: %s", tostring(index), tostring(value)))
-                end
-                task.wait()
+_G.print = function(...)
+    local args = {...}
+    if not dumped then
+        for _, arg in pairs(args) do
+            if type(arg) == "table" or (adv and type(adv) == "table") then
+                local target = adv or arg
+                dumped = true
+                
+                -- Jalankan proses konversi ke file di thread background
+                task.spawn(function()
+                    original_print("[+] Mendeteksi tabel Luast! Memulai proses ekstraksi ke file...")
+                    
+                    local dumpContent = "--- [LUAST EXTRACTED STRINGS DUMP] ---\n\n"
+                    local linesCount = 0
+                    
+                    for index, value in pairs(target) do
+                        if type(value) == "string" then
+                            dumpContent = dumpContent .. string.format("adv[%s] -> %q\n", tostring(index), value)
+                            linesCount = linesCount + 1
+                        elseif type(value) == "number" then
+                            dumpContent = dumpContent .. string.format("adv[%s] -> %s\n", tostring(index), tostring(value))
+                            linesCount = linesCount + 1
+                        end
+                        
+                        -- Beri jeda mikro setiap 100 baris agar alur thread memori tetap stabil
+                        if linesCount % 100 == 0 then
+                            task.wait(0.001)
+                        end
+                    end
+                    
+                    dumpContent = dumpContent .. string.format("\n--- [TOTAL EKSTRAKSI: %d DATA] ---", linesCount)
+                    
+                    -- Menyimpan langsung ke folder workspace executor Anda
+                    -- Beberapa executor membutuhkan folder induk dibuat terlebih dahulu jika menggunakan tanda "/"
+                    -- Untuk keamanan, kita langsung buat nama file: "luast_dump.txt"
+                    pcall(function()
+                        writefile("luast_dump.txt", dumpContent)
+                    end)
+                    
+                    original_print("--------------------------------------------------")
+                    original_print("[+] BERHASIL! File disimpan sebagai: luast_dump.txt")
+                    original_print("[+] Silakan cek folder 'workspace' di dalam direktori Executor Anda.")
+                    original_print("--------------------------------------------------")
+                end)
+                
+                -- Hentikan alur utama skrip agar fungsi berbahaya bawaan hub tidak jalan
+                error("Proteksi dilewati. Hasil ekstraksi dialihkan ke file.")
             end
-            
-            print("--------------------------------------------------")
-            print("[+] Ekstraksi Selesai! Berhasil mengambil " .. tostring(count) .. " data.")
-            print("--------------------------------------------------")
-            
-            -- Matikan script agar aman dan tidak memicu crash/freeze bawaan Luast
-            error("Dump Sukses - Mengehentikan Logic Utama.")
         end
     end
-    task.wait()
-    return original_task_spawn(...)
-end)
+    return original_print(...)
+end
 
 -- ====================================================================
--- TEMPEL SCRIPT ASLI ANDA DI BAWAH SINI (UTUH DAN JANGAN DIUBAH APAPUN)
+-- TEMPEL SCRIPT ASLI OBFUSCATED ANDA DI BAWAH SINI (UTUH TANPA DIUBAH)
 -- ====================================================================
 
 -- generated by luast v1.0.1 https://luast.clv.clou
