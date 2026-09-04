@@ -18,10 +18,13 @@ task.spawn = hookfunction(task.spawn, function(...)
             for index, value in pairs(targetTable) do
                 count = count + 1
                 if type(value) == "string" then
+                    task.wait()
                     print(string.format("adv[%s] -> STRING: %q", tostring(index), value))
                 elseif type(value) == "number" then
+                    task.wait()
                     print(string.format("adv[%s] -> NUMBER: %s", tostring(index), tostring(value)))
                 end
+                task.wait()
             end
             
             print("--------------------------------------------------")
@@ -32,6 +35,7 @@ task.spawn = hookfunction(task.spawn, function(...)
             error("Dump Sukses - Mengehentikan Logic Utama.")
         end
     end
+    task.wait()
     return original_task_spawn(...)
 end)
 
